@@ -6,14 +6,14 @@ session_start();
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['access_token']);
-    header('Location: /drive-upload/');
+    header('Location: /dorykeepswimming.online/');
     exit();
 }
 
 $client = new Google\Client();
 $client->setAuthConfig('credentials.json');
 $client->addScope(Google\Service\Drive::DRIVE_FILE);
-$client->setRedirectUri('http://localhost/drive-upload/oauth2callback.php');
+$client->setRedirectUri('http://localhost/dorykeepswimming.online/oauth2callback.php');
 
 if (isset($_SESSION['access_token'])) {
     $client->setAccessToken($_SESSION['access_token']);
@@ -25,7 +25,7 @@ if (isset($_SESSION['access_token'])) {
             $_SESSION['access_token'] = $client->getAccessToken();
         } else {
             unset($_SESSION['access_token']);
-            header('Location: /drive-upload/');
+            header('Location: /dorykeepswimming.online/');
             exit();
         }
     }
@@ -262,7 +262,7 @@ if (isset($_SESSION['access_token'])) {
     </head>
     <body>
         <header>
-            <a href="/drive-upload/" class="logo">ATMS Drive Uploader</a>
+            <a href="/dorykeepswimming.online/" class="logo">ATMS Drive Uploader</a>
             <a href="?logout" class="logout-btn">Logout</a>
         </header>
         
