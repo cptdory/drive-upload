@@ -6,7 +6,7 @@ session_start();
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['access_token']);
-    header('Location: /dorykeepswimming.online/');
+    header('Location:https://dorykeepswimming.online//');
     exit();
 }
 
@@ -25,7 +25,7 @@ if (isset($_SESSION['access_token'])) {
             $_SESSION['access_token'] = $client->getAccessToken();
         } else {
             unset($_SESSION['access_token']);
-            header('Location: /dorykeepswimming.online/');
+            header('Location:https://dorykeepswimming.online/');
             exit();
         }
     }
@@ -262,7 +262,7 @@ if (isset($_SESSION['access_token'])) {
     </head>
     <body>
         <header>
-            <a href="/dorykeepswimming.online/" class="logo">ATMS Drive Uploader</a>
+            <a href="/drive-upload/" class="logo">ATMS Drive Uploader</a>
             <a href="?logout" class="logout-btn">Logout</a>
         </header>
         

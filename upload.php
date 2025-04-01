@@ -4,7 +4,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 session_start();
 
 if (!isset($_SESSION['access_token'])) {
-    header('Location: /dorykeepswimming.online/');
+    header('Location: https://dorykeepswimming.online//');
     exit();
 }
 
@@ -17,7 +17,7 @@ if ($client->isAccessTokenExpired()) {
     if ($client->getRefreshToken()) {
         $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
     } else {
-        header('Location: /dorykeepswimming.online/');
+        header('Location:https://dorykeepswimming.online/');
         exit();
     }
 }
@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
     </head>
     <body>
         <header>
-            <a href="/dorykeepswimming.online/" class="logo">ATMS Drive Uploader</a>
+            <a href="https://dorykeepswimming.online/" class="logo">ATMS Drive Uploader</a>
         </header>
         
         <div class="container">
@@ -339,13 +339,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
                     </div>
                 <?php endforeach; ?>
                 
-                <a href="/dorykeepswimming.online/" class="back-link">← Upload more files</a>
+                <a href="https://dorykeepswimming.online/" class="back-link">← Upload more files</a>
             </div>
         </div>
     </body>
     </html>
     <?php
 } else {
-    header('Location: /dorykeepswimming.online/');
+    header('Location:https://dorykeepswimming.online/');
 }
 ?>
