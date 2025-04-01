@@ -1,0 +1,41 @@
+# Dependency directories
+/vendor/
+
+# Environment files (sensitive credentials)
+credentials.json
+.env
+*.key
+*.pem
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+error_log
+
+# Cache and sessions
+/sessions/
+*.cache
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local development config overrides
+config.local.php
+
+# Hostinger specific
+/public_html/
+/domains/
+
+# Composer files (unless you want to track them)
+composer.lock
+composer.phar
+
+# OS generated files
+ehthumbs.db
+[Tt]humbs.db
