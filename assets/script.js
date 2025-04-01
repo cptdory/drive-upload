@@ -281,3 +281,107 @@ $(document).ready(function() {
         return null;
     }
 });
+
+// Progress bar elements
+const progressContainer = document.createElement('div');
+progressContainer.style.marginTop = '1.5rem';
+progressContainer.style.display = 'none';
+
+const progressBar = document.createElement('div');
+progressBar.style.height = '20px';
+progressBar.style.backgroundColor = '#2a3a5e';
+progressBar.style.borderRadius = '10px';
+progressBar.style.overflow = 'hidden';
+
+const progressBarFill = document.createElement('div');
+progressBarFill.style.height = '100%';
+progressBarFill.style.width = '0%';
+progressBarFill.style.backgroundColor = '#1976d2';
+progressBarFill.style.transition = 'width 0.3s ease';
+
+const progressText = document.createElement('div');
+progressText.style.marginTop = '0.5rem';
+progressText.style.textAlign = 'center';
+progressText.style.fontSize = '0.9rem';
+
+progressBar.appendChild(progressBarFill);
+progressContainer.appendChild(progressBar);
+progressContainer.appendChild(progressText);
+document.querySelector('.card').appendChild(progressContainer);
+
+// Modify form submission
+document.querySelector('form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Show progress UI
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+    progressContainer.style.display = 'block';
+    progressText.textContent = 'Preparing upload...';
+    
+    try {
+        const response = await fetch('upload.php', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Redirect to results page
+            window.location.href = 'upload.php?success=1&folder=' + encodeURIComponent(result.folder_name);
+        } else {
+            progressText.textContent = 'Error: ' + (result.message || 'Upload failed');
+            progressBarFill.style.backgroundColor = '#f44336';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Try Again';
+        }
+    } catch (error) {
+        progressText.textContent = 'Network error: ' + error.message;
+        progressBarFill.style.backgroundColor = '#f44336';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Try Again';
+    }
+});
+
+// Progress tracking for the actual upload
+const originalFetch = window.fetch;
+window.fetch = async function(url, options) {
+    if (options && options.body instanceof FormData) {
+        const reader = options.body.getReader();
+        const contentLength = options.headers['Content-Length'];
+        let receivedLength = 0;
+        
+        const stream = new ReadableStream({
+            async start(controller) {
+                while (true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) break;
+                    
+                    controller.enqueue(value);
+                    receivedLength += value.length;
+                    
+                    // Update progress
+                    if (contentLength) {
+                        const percent = Math.round((receivedLength / contentLength) * 100);
+                        progressBarFill.style.width = percent + '%';
+                        progressText.textContent = `Uploading: ${percent}%`;
+                    }
+                }
+                controller.close();
+            }
+        });
+        
+        options.body = new Response(stream).body;
+    }
+    
+    return originalFetch(url, options);
+};
