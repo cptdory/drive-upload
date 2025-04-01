@@ -13,7 +13,7 @@ if (isset($_GET['logout'])) {
 $client = new Google\Client();
 $client->setAuthConfig('credentials.json');
 $client->addScope(Google\Service\Drive::DRIVE_FILE);
-$client->setRedirectUri('http://localhost/dorykeepswimming.online/oauth2callback.php');
+$client->setRedirectUri('https://dorykeepswimming.online/oauth2callback.php');
 
 if (isset($_SESSION['access_token'])) {
     $client->setAccessToken($_SESSION['access_token']);
