@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
-
+ini_set('upload_max_filesize', '1536M');
+ini_set('post_max_size', '1536M');
+ini_set('max_execution_time', 300);  // 5 minutes
+ini_set('max_input_time', 300); 
 // Start session without writing to prevent early lock
 session_start(['read_and_close' => true]);
 
@@ -79,7 +82,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
             foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
                 $fileName = $_FILES['files']['name'][$key];
                 $filesProcessed++;
-                
+                $fileSize = $_FILES['files']['size'][$key];
+                $maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
+            
+                if ($fileSize > $maxSize) {
+                    $uploadResults[] = [
+                        'name' => $fileName,
+                        'type' => 'file',
+                        'status' => 'error',
+                        'message' => 'File exceeds 1536MB limit'
+                    ];
+                    continue; // Skip this file
+                }
                 $progress = 20 + (($filesProcessed / $totalFiles) * 70);
                 sendProgress($progress, 'Uploading file...', $fileName);
 

@@ -115,123 +115,186 @@ if (isset($_SESSION['access_token'])) {
         </div>
 
         <script>
-            // Display selected file names
-            document.getElementById('files').addEventListener('change', function() {
-                const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
+// Display selected file names with size validation
+document.getElementById('files').addEventListener('change', function() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '';
+    const maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
+    let hasInvalidFiles = false;
 
-                if (this.files.length === 0) {
-                    fileList.innerHTML = '<div class="empty-state">No files selected</div>';
-                    return;
-                }
+    if (this.files.length === 0) {
+        fileList.innerHTML = '<div class="empty-state">No files selected</div>';
+        return;
+    }
 
-                for (let i = 0; i < this.files.length; i++) {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.textContent = this.files[i].name;
-                    fileList.appendChild(fileItem);
-                }
-            });
+    for (let i = 0; i < this.files.length; i++) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        
+        // Add warning icon for oversized files
+        if (this.files[i].size > maxSize) {
+            fileItem.innerHTML = `⚠️ ${this.files[i].name} <span class="file-size-error">(File too large - ${formatFileSize(this.files[i].size)})</span>`;
+            fileItem.style.color = 'var(--error-color)';
+            hasInvalidFiles = true;
+        } else {
+            fileItem.innerHTML = `${this.files[i].name} <span class="file-size">${formatFileSize(this.files[i].size)}</span>`;
+        }
+        fileList.appendChild(fileItem);
+    }
 
-            // Handle form submission and progress updates
-            document.getElementById('uploadForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const form = e.target;
-                const formData = new FormData(form);
-                const progressContainer = document.getElementById('progressContainer');
-                const overallProgress = document.getElementById('overallProgress');
-                const overallText = document.getElementById('overallText');
-                const fileProgressContainer = document.getElementById('fileProgressContainer');
-                const uploadBtn = document.getElementById('uploadBtn');
-                
-                // Show progress container
-                progressContainer.style.display = 'block';
-                uploadBtn.disabled = true;
-                uploadBtn.textContent = 'Uploading...';
-                
-                // Clear previous file progress indicators
-                fileProgressContainer.innerHTML = '';
-                
-                // Create progress elements for each file
-                const files = document.getElementById('files').files;
-                for (let i = 0; i < files.length; i++) {
-                    const fileProgress = document.createElement('div');
-                    fileProgress.className = 'file-progress';
+    // Disable upload button if any files are too large
+    document.getElementById('uploadBtn').disabled = hasInvalidFiles;
+    if (hasInvalidFiles) {
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'error-message';
+        errorMsg.textContent = 'Some files exceed the 1536MB limit. Please remove them.';
+        fileList.appendChild(errorMsg);
+    }
+});
+
+// Handle form submission with enhanced validation
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const files = document.getElementById('files').files;
+    const maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
+    
+    // Final client-side validation
+    for (let file of files) {
+        if (file.size > maxSize) {
+            alert(`Cannot upload: "${file.name}" (${formatFileSize(file.size)}) exceeds 1536MB limit.`);
+            return;
+        }
+    }
+    
+    const formData = new FormData(form);
+    const progressContainer = document.getElementById('progressContainer');
+    const overallProgress = document.getElementById('overallProgress');
+    const overallText = document.getElementById('overallText');
+    const fileProgressContainer = document.getElementById('fileProgressContainer');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // Show progress container
+    progressContainer.style.display = 'block';
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+    
+    // Clear previous file progress indicators
+    fileProgressContainer.innerHTML = '';
+    
+    // Create detailed progress elements for each file
+    for (let i = 0; i < files.length; i++) {
+        const fileProgress = document.createElement('div');
+        fileProgress.className = 'file-progress';
+        
+        const fileInfo = document.createElement('div');
+        fileInfo.className = 'file-progress-info';
+        fileInfo.innerHTML = `
+            <span class="file-progress-name">${files[i].name}</span>
+            <span class="file-progress-size">${formatFileSize(files[i].size)}</span>
+        `;
+        
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        
+        const progress = document.createElement('div');
+        progress.className = 'progress';
+        progress.id = `fileProgress${i}`;
+        
+        progressBar.appendChild(progress);
+        fileProgress.appendChild(fileInfo);
+        fileProgress.appendChild(progressBar);
+        fileProgressContainer.appendChild(fileProgress);
+    }
+    
+    // Submit form via AJAX with progress tracking
+    const xhr = new XMLHttpRequest();
+    
+    // Client-side upload progress (for the POST request)
+    xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            overallProgress.style.width = percent + '%';
+            overallText.textContent = `Uploading data... ${percent}%`;
+        }
+    });
+    
+    xhr.addEventListener('load', function() {
+        if (xhr.status === 200) {
+            overallText.textContent = 'Processing complete!';
+            window.location.href = 'upload_results.php';
+        } else {
+            showUploadError('Upload failed: Server error');
+        }
+    });
+    
+    xhr.addEventListener('error', function() {
+        showUploadError('Network error during upload');
+    });
+    
+    xhr.addEventListener('abort', function() {
+        showUploadError('Upload cancelled');
+    });
+    
+    xhr.open('POST', form.action, true);
+    xhr.send(formData);
+    
+    // Check server-side processing progress
+    const checkProgress = setInterval(function() {
+        fetch('check_progress.php')
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(data => {
+                if (data.progress) {
+                    // Update overall progress
+                    overallProgress.style.width = data.progress + '%';
                     
-                    const fileName = document.createElement('div');
-                    fileName.className = 'file-progress-name';
-                    fileName.textContent = files[i].name;
-                    
-                    const progressBar = document.createElement('div');
-                    progressBar.className = 'progress-bar';
-                    
-                    const progress = document.createElement('div');
-                    progress.className = 'progress';
-                    progress.id = `fileProgress${i}`;
-                    
-                    progressBar.appendChild(progress);
-                    fileProgress.appendChild(fileName);
-                    fileProgress.appendChild(progressBar);
-                    fileProgressContainer.appendChild(fileProgress);
-                }
-                
-                // Submit form via AJAX to track progress
-                const xhr = new XMLHttpRequest();
-                
-                xhr.upload.addEventListener('progress', function(e) {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        overallProgress.style.width = percent + '%';
-                        overallText.textContent = `Uploading... ${percent}%`;
-                    }
-                });
-                
-                xhr.addEventListener('load', function() {
-                    if (xhr.status === 200) {
-                        // Redirect to results page as handled by upload.php
-                        window.location.href = 'upload_results.php';
-                    } else {
-                        overallText.textContent = 'Upload failed';
-                        uploadBtn.disabled = false;
-                        uploadBtn.textContent = 'Upload to Drive';
-                    }
-                });
-                
-                xhr.addEventListener('error', function() {
-                    overallText.textContent = 'Upload failed';
-                    uploadBtn.disabled = false;
-                    uploadBtn.textContent = 'Upload to Drive';
-                });
-                
-                xhr.open('POST', form.action, true);
-                xhr.send(formData);
-                
-                // Check server-side progress periodically
-                const checkProgress = setInterval(function() {
-                    fetch('check_progress.php')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.progress) {
-                                overallProgress.style.width = data.progress + '%';
-                                overallText.textContent = data.message || `Uploading... ${data.progress}%`;
-                                
-                                if (data.current_file) {
-                                    // Update current file being processed
-                                    overallText.textContent = `Uploading ${data.current_file}... ${data.progress}%`;
-                                }
-                                
-                                if (data.progress === 100) {
-                                    clearInterval(checkProgress);
-                                }
+                    // Update status message
+                    let statusMessage = `Processing... ${data.progress}%`;
+                    if (data.current_file) {
+                        statusMessage = `Uploading ${data.current_file} (${data.progress}%)`;
+                        
+                        // Update individual file progress if available
+                        if (data.file_index !== undefined) {
+                            const fileProgress = document.getElementById(`fileProgress${data.file_index}`);
+                            if (fileProgress) {
+                                fileProgress.style.width = data.file_progress + '%';
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error checking progress:', error);
-                        });
-                }, 1000);
+                        }
+                    }
+                    overallText.textContent = statusMessage;
+                    
+                    if (data.progress === 100) {
+                        clearInterval(checkProgress);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Progress check error:', error);
             });
-        </script>
+    }, 1000);
+    
+    function showUploadError(message) {
+        overallText.textContent = message;
+        overallProgress.style.backgroundColor = 'var(--error-color)';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Try Again';
+        clearInterval(checkProgress);
+    }
+});
+
+// Helper function to format file sizes
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+</script>
     </body>
     </html>
 <?php
