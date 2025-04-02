@@ -31,10 +31,9 @@ if (isset($_SESSION['access_token'])) {
     }
 
     $driveService = new Google\Service\Drive($client);
-?>
+    ?>
     <!DOCTYPE html>
     <html>
-
     <head>
         <title>Upload to Google Drive</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,13 +52,13 @@ if (isset($_SESSION['access_token'])) {
                 --success-color: #4caf50;
                 --error-color: #f44336;
             }
-
+            
             * {
                 box-sizing: border-box;
                 margin: 0;
                 padding: 0;
             }
-
+            
             body {
                 font-family: 'Roboto', sans-serif;
                 background-color: var(--background-dark);
@@ -68,13 +67,13 @@ if (isset($_SESSION['access_token'])) {
                 padding: 0;
                 margin: 0;
             }
-
+            
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 2rem;
             }
-
+            
             header {
                 background-color: var(--primary-color);
                 padding: 1.5rem 2rem;
@@ -83,14 +82,14 @@ if (isset($_SESSION['access_token'])) {
                 justify-content: space-between;
                 align-items: center;
             }
-
+            
             .logo {
                 font-size: 1.5rem;
                 font-weight: 500;
                 color: white;
                 text-decoration: none;
             }
-
+            
             .logout-btn {
                 color: var(--text-light);
                 text-decoration: none;
@@ -98,11 +97,11 @@ if (isset($_SESSION['access_token'])) {
                 border-radius: 4px;
                 transition: background-color 0.3s;
             }
-
+            
             .logout-btn:hover {
                 background-color: var(--primary-dark);
             }
-
+            
             .card {
                 background-color: var(--card-bg);
                 border-radius: 8px;
@@ -110,14 +109,12 @@ if (isset($_SESSION['access_token'])) {
                 padding: 2rem;
                 margin-bottom: 2rem;
             }
-
-            h1,
-            h2,
-            h3 {
+            
+            h1, h2, h3 {
                 color: var(--text-light);
                 margin-bottom: 1.5rem;
             }
-
+            
             h1 {
                 font-size: 2rem;
                 font-weight: 500;
@@ -125,18 +122,18 @@ if (isset($_SESSION['access_token'])) {
                 padding-bottom: 0.5rem;
                 display: inline-block;
             }
-
+            
             .form-group {
                 margin-bottom: 1.5rem;
             }
-
+            
             label {
                 display: block;
                 margin-bottom: 0.5rem;
                 font-weight: 500;
                 color: var(--text-light);
             }
-
+            
             input[type="text"],
             input[type="file"] {
                 width: 100%;
@@ -148,13 +145,13 @@ if (isset($_SESSION['access_token'])) {
                 font-size: 1rem;
                 transition: border-color 0.3s;
             }
-
+            
             input[type="text"]:focus,
             input[type="file"]:focus {
                 outline: none;
                 border-color: var(--secondary-color);
             }
-
+            
             .btn {
                 background-color: var(--secondary-color);
                 color: white;
@@ -168,16 +165,16 @@ if (isset($_SESSION['access_token'])) {
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
-
+            
             .btn:hover {
                 background-color: #1565c0;
                 transform: translateY(-2px);
             }
-
+            
             .btn:active {
                 transform: translateY(0);
             }
-
+            
             .file-list {
                 margin-top: 1rem;
                 background-color: rgba(0, 0, 0, 0.1);
@@ -185,7 +182,7 @@ if (isset($_SESSION['access_token'])) {
                 padding: 1rem;
                 border: 1px dashed var(--border-color);
             }
-
+            
             .file-item {
                 padding: 0.5rem;
                 background-color: rgba(255, 255, 255, 0.05);
@@ -194,52 +191,52 @@ if (isset($_SESSION['access_token'])) {
                 display: flex;
                 align-items: center;
             }
-
+            
             .file-item:before {
                 content: "📄";
                 margin-right: 0.5rem;
             }
-
+            
             .drive-files {
                 list-style: none;
             }
-
+            
             .drive-files li {
                 padding: 0.75rem;
                 border-bottom: 1px solid var(--border-color);
                 display: flex;
                 align-items: center;
             }
-
+            
             .drive-files li:before {
                 content: "📁";
                 margin-right: 0.75rem;
             }
-
+            
             .drive-files li a {
                 color: var(--text-light);
                 text-decoration: none;
                 transition: color 0.3s;
                 flex-grow: 1;
             }
-
+            
             .drive-files li a:hover {
                 color: var(--secondary-color);
             }
-
+            
             .file-type {
                 color: var(--text-muted);
                 font-size: 0.85rem;
                 margin-left: 1rem;
             }
-
+            
             .empty-state {
                 color: var(--text-muted);
                 text-align: center;
                 padding: 2rem;
                 font-style: italic;
             }
-
+            
             .error-message {
                 color: var(--error-color);
                 background-color: rgba(244, 67, 54, 0.1);
@@ -247,33 +244,32 @@ if (isset($_SESSION['access_token'])) {
                 border-radius: 4px;
                 margin-bottom: 1rem;
             }
-
+            
             @media (max-width: 768px) {
                 .container {
                     padding: 1rem;
                 }
-
+                
                 header {
                     padding: 1rem;
                 }
-
+                
                 .card {
                     padding: 1.5rem;
                 }
             }
         </style>
     </head>
-
     <body>
         <header>
             <a href="/drive-upload/" class="logo">ATMS Drive Uploader</a>
             <a href="?logout" class="logout-btn">Logout</a>
         </header>
-
+        
         <div class="container">
             <div class="card">
                 <h1>Upload Files to Google Drive</h1>
-
+                
                 <form action="upload.php" method="post" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="folder_name">Folder Name</label>
@@ -339,97 +335,9 @@ if (isset($_SESSION['access_token'])) {
                 }
             });
         </script>
-        <script>
-            document.querySelector('form').addEventListener('submit', function(e) {
-                const form = this;
-                const submitBtn = form.querySelector('button[type="submit"]');
-                const progressContainer = document.createElement('div');
-                progressContainer.style.marginTop = '1rem';
-
-                const progressBar = document.createElement('div');
-                progressBar.style.height = '20px';
-                progressBar.style.backgroundColor = '#2a3a5e';
-                progressBar.style.borderRadius = '4px';
-                progressBar.style.marginBottom = '0.5rem';
-                progressBar.style.overflow = 'hidden';
-
-                const progressFill = document.createElement('div');
-                progressFill.style.height = '100%';
-                progressFill.style.width = '0%';
-                progressFill.style.backgroundColor = '#1976d2';
-                progressFill.style.transition = 'width 0.3s';
-
-                const progressText = document.createElement('div');
-                progressText.style.textAlign = 'center';
-                progressText.style.fontSize = '0.9rem';
-
-                progressBar.appendChild(progressFill);
-                progressContainer.appendChild(progressBar);
-                progressContainer.appendChild(progressText);
-                form.appendChild(progressContainer);
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Uploading...';
-
-                const xhr = new XMLHttpRequest();
-                const formData = new FormData(form);
-
-                // Check total size first
-                let totalSize = 0;
-                const files = document.getElementById('files').files;
-                for (let i = 0; i < files.length; i++) {
-                    totalSize += files[i].size;
-                }
-
-                // 5GB limit check
-                if (totalSize > 5 * 1024 * 1024 * 1024) {
-                    alert('Total upload size exceeds 5GB limit');
-                    progressContainer.remove();
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Upload to Drive';
-                    e.preventDefault();
-                    return;
-                }
-
-                xhr.upload.addEventListener('progress', function(e) {
-                    if (e.lengthComputable) {
-                        const percentComplete = Math.round((e.loaded / e.total) * 100);
-                        progressFill.style.width = percentComplete + '%';
-                        progressText.textContent = percentComplete + '% (' +
-                            formatBytes(e.loaded) + ' / ' + formatBytes(e.total) + ')';
-                    }
-                });
-
-                xhr.addEventListener('load', function() {
-                    if (xhr.status === 200) {
-                        document.body.innerHTML = xhr.responseText;
-                    } else {
-                        alert('Upload failed: ' + xhr.statusText);
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Upload to Drive';
-                        progressContainer.remove();
-                    }
-                });
-
-                xhr.open('POST', form.action, true);
-                xhr.send(formData);
-
-                e.preventDefault();
-            });
-
-            function formatBytes(bytes, decimals = 2) {
-                if (bytes === 0) return '0 Bytes';
-                const k = 1024;
-                const dm = decimals < 0 ? 0 : decimals;
-                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-                }
-        </script>
     </body>
-
     </html>
-<?php
+    <?php
 } else {
     $authUrl = $client->createAuthUrl();
     header('Location: ' . filter_var($authUrl, FILTER_SANITIZE_URL));
