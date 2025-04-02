@@ -1,9 +1,9 @@
-
-
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
+// Start session and immediately close to prevent blocking
 session_start();
+session_write_close();
 
 if (!isset($_SESSION['access_token'])) {
     header('Location: https://dorykeepswimming.online/');
@@ -12,18 +12,17 @@ if (!isset($_SESSION['access_token'])) {
 
 // Function to send progress updates
 function sendProgress($progress, $message = '', $currentFile = '') {
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        $_SESSION['upload_progress'] = [
-            'progress' => $progress,
-            'message' => $message,
-            'current_file' => $currentFile
-        ];
-        session_write_close();
-    }
+    session_start(); // Reopen session for writing
+    $_SESSION['upload_progress'] = [
+        'progress' => $progress,
+        'message' => $message,
+        'current_file' => $currentFile
+    ];
+    session_write_close(); // Close again immediately
 }
 
 // Initialize progress
-sendProgress(0, 'Preparing upload...', '');
+sendProgress(5, 'Starting upload process...', '');
 
 $client = new Google\Client();
 $client->setAuthConfig('credentials.json');
@@ -47,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
 
     try {
         // 1. Create the folder
-        sendProgress(5, 'Creating folder...', $_POST['folder_name']);
+        sendProgress(10, 'Creating folder...', $_POST['folder_name']);
         
         $folderMetadata = new Google\Service\Drive\DriveFile([
             'name' => $_POST['folder_name'],
@@ -66,17 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
             'link' => $folder->getWebViewLink()
         ];
 
-        sendProgress(10, 'Folder created', $_POST['folder_name']);
+        sendProgress(20, 'Folder created successfully', $_POST['folder_name']);
 
         // 2. Upload files to the folder
         foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
             $fileName = $_FILES['files']['name'][$key];
             $filesProcessed++;
             
-            // Calculate progress (10-90% for files, 10% was for folder creation)
-            $baseProgress = 10;
-            $progressRange = 90;
-            $progress = $baseProgress + (($filesProcessed / $totalFiles) * $progressRange);
+            // Calculate progress (20-90% for files)
+            $progress = 20 + (($filesProcessed / $totalFiles) * 70);
             
             sendProgress($progress, 'Uploading file...', $fileName);
 
@@ -112,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
                     'link' => $uploadedFile->getWebViewLink()
                 ];
 
-                sendProgress($progress, 'File uploaded', $fileName);
+                sendProgress($progress, 'File uploaded successfully', $fileName);
             } catch (Exception $e) {
                 $uploadResults[] = [
                     'name' => $fileName,
@@ -120,25 +117,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !em
                     'status' => 'error',
                     'message' => $e->getMessage()
                 ];
-                sendProgress($progress, 'Error uploading file', $fileName);
+                sendProgress($progress, 'Error uploading file: ' . $e->getMessage(), $fileName);
             }
         }
 
-        sendProgress(100, 'Upload complete', '');
+        sendProgress(100, 'Upload complete!', '');
     } catch (Exception $e) {
-        sendProgress(0, 'Error: ' . $e->getMessage(), '');
+        sendProgress(0, 'Upload failed: ' . $e->getMessage(), '');
         die("Error: " . $e->getMessage());
     }
 
     // Store results in session for the results page
+    session_start();
     $_SESSION['upload_results'] = $uploadResults;
+    session_write_close();
     
-    // Output JavaScript to redirect to results page
-    ?>
-    <script>
-        window.location.href = 'upload_results.php';
-    </script>
-    <?php
+    // Return success response
+    echo json_encode(['status' => 'success']);
     exit();
 } else {
     header('Location: https://dorykeepswimming.online/');

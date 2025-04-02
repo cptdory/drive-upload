@@ -137,76 +137,64 @@ if (isset($_SESSION['access_token'])) {
         const form = this;
         const progressContainer = document.getElementById('progressContainer');
         const overallProgress = document.getElementById('overallProgress');
+        const progressPercentage = document.getElementById('progressPercentage');
         const overallText = document.getElementById('overallText');
         const currentFile = document.getElementById('currentFile');
-        const progressPercentage = document.getElementById('progressPercentage');
         const uploadBtn = document.getElementById('uploadBtn');
         
-        // Reset progress display
+        // Reset and show progress UI
+        progressContainer.style.display = 'block';
         overallProgress.style.width = '0%';
         progressPercentage.textContent = '0%';
         overallText.textContent = 'Starting upload...';
         currentFile.textContent = '';
-        
-        // Show progress container
-        progressContainer.style.display = 'block';
         uploadBtn.disabled = true;
         uploadBtn.textContent = 'Uploading...';
         
-        // Create FormData object
+        // Create FormData and submit
         const formData = new FormData(form);
         
-        // Start checking progress
-        let progressInterval;
-        let uploadCompleted = false;
-        
-        function checkProgress() {
-            fetch('get_progress.php?t=' + Date.now()) // Add timestamp to prevent caching
+        // Start progress checking
+        let progressInterval = setInterval(() => {
+            fetch('get_progress.php?_=' + Date.now()) // Cache buster
                 .then(response => response.json())
                 .then(data => {
                     if (data.progress) {
-                        // Update progress bar
                         const progress = Math.round(data.progress);
                         overallProgress.style.width = progress + '%';
                         progressPercentage.textContent = progress + '%';
-                        overallText.textContent = data.message || 'Uploading...';
+                        overallText.textContent = data.message;
                         
-                        // Update current file
                         if (data.current_file) {
-                            currentFile.textContent = 'Current file: ' + data.current_file;
+                            currentFile.textContent = 'Processing: ' + data.current_file;
                         }
                         
-                        // If upload is complete
-                        if (data.progress >= 100 && !uploadCompleted) {
-                            uploadCompleted = true;
+                        if (progress >= 100) {
                             clearInterval(progressInterval);
-                            overallText.textContent = 'Upload complete!';
-                            uploadBtn.textContent = 'Upload Complete';
-                            
-                            // Redirect to results page after a short delay
+                            overallText.textContent = 'Upload complete! Redirecting...';
                             setTimeout(() => {
                                 window.location.href = 'upload_results.php';
                             }, 1000);
                         }
                     }
                 })
-                .catch(error => {
-                    console.error('Error checking progress:', error);
-                });
-        }
+                .catch(err => console.error('Progress error:', err));
+        }, 300); // Check every 300ms
         
-        progressInterval = setInterval(checkProgress, 500);
-        
-        // Submit the form via AJAX to start the upload process
+        // Start the actual upload
         fetch('upload.php', {
             method: 'POST',
             body: formData
-        }).catch(error => {
-            console.error('Upload error:', error);
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Upload failed');
+        })
+        .catch(error => {
+            clearInterval(progressInterval);
             overallText.textContent = 'Upload failed!';
             uploadBtn.disabled = false;
             uploadBtn.textContent = 'Try Again';
-            clearInterval(progressInterval);
+            console.error('Upload error:', error);
         });
     });
 </script>
