@@ -23,18 +23,6 @@ if ($client->isAccessTokenExpired()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !empty($_FILES['files']['name'][0])) {
-    $totalSize = 0;
-    $maxSize = 5 * 1024 * 1024 * 1024; // 5GB in bytes
-    
-    if (!empty($_FILES['files']['name'][0])) {
-        foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
-            $totalSize += $_FILES['files']['size'][$key];
-        }
-        
-        if ($totalSize > $maxSize) {
-            die("Error: Total upload size exceeds 5GB limit. Please upload fewer files.");
-        }
-    }
     $driveService = new Google\Service\Drive($client);
     $uploadResults = [];
     
