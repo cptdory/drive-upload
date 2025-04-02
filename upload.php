@@ -1,30 +1,12 @@
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
-ini_set('upload_max_filesize', '1536M');
-ini_set('post_max_size', '1536M');
-ini_set('max_execution_time', 300);  // 5 minutes
-ini_set('max_input_time', 300); 
-// Start session without writing to prevent early lock
-session_start(['read_and_close' => true]);
+
+session_start();
 
 if (!isset($_SESSION['access_token'])) {
-    header('Location: https://dorykeepswimming.online/');
+    header('Location: https://dorykeepswimming.online//');
     exit();
 }
-
-// Function to send progress updates
-function sendProgress($progress, $message = '', $currentFile = '') {
-    session_start();
-    $_SESSION['upload_progress'] = [
-        'progress' => $progress,
-        'message' => $message,
-        'current_file' => $currentFile
-    ];
-    session_write_close();
-}
-
-// Initialize progress
-sendProgress(5, 'Starting upload process...', '');
 
 $client = new Google\Client();
 $client->setAuthConfig('credentials.json');
@@ -35,127 +17,347 @@ if ($client->isAccessTokenExpired()) {
     if ($client->getRefreshToken()) {
         $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
     } else {
-        header('Location: https://dorykeepswimming.online/');
+        header('Location:https://dorykeepswimming.online/');
         exit();
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['folder_name']) && !empty($_FILES['files']['name'][0])) {
-    // Immediately send response to prevent timeout
-    ignore_user_abort(true);
-    header("Connection: close");
-    header("Content-Length: 0");
-    ob_end_flush();
-    flush();
+    $totalSize = 0;
+    $maxSize = 5 * 1024 * 1024 * 1024; // 5GB in bytes
     
-    // Process upload in background
-    register_shutdown_function(function() use ($client) {
-        $driveService = new Google\Service\Drive($client);
-        $uploadResults = [];
-        $totalFiles = count($_FILES['files']['name']);
-        $filesProcessed = 0;
-
-        try {
-            // 1. Create the folder
-            sendProgress(10, 'Creating folder...', $_POST['folder_name']);
+    if (!empty($_FILES['files']['name'][0])) {
+        foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
+            $totalSize += $_FILES['files']['size'][$key];
+        }
+        
+        if ($totalSize > $maxSize) {
+            die("Error: Total upload size exceeds 5GB limit. Please upload fewer files.");
+        }
+    }
+    $driveService = new Google\Service\Drive($client);
+    $uploadResults = [];
+    
+    try {
+        // 1. Create the folder
+        $folderMetadata = new Google\Service\Drive\DriveFile([
+            'name' => $_POST['folder_name'],
+            'mimeType' => 'application/vnd.google-apps.folder'
+        ]);
+        
+        $folder = $driveService->files->create($folderMetadata, [
+            'fields' => 'id, name, webViewLink'
+        ]);
+        
+        $folderId = $folder->getId();
+        $uploadResults[] = [
+            'name' => $folder->getName(),
+            'type' => 'folder',
+            'status' => 'success',
+            'link' => $folder->getWebViewLink()
+        ];
+        
+        // 2. Upload files to the folder
+        foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
+            if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
+                $uploadResults[] = [
+                    'name' => $_FILES['files']['name'][$key],
+                    'type' => 'file',
+                    'status' => 'error',
+                    'message' => 'Upload failed with error code ' . $_FILES['files']['error'][$key]
+                ];
+                continue;
+            }
             
-            $folderMetadata = new Google\Service\Drive\DriveFile([
-                'name' => $_POST['folder_name'],
-                'mimeType' => 'application/vnd.google-apps.folder'
-            ]);
-
-            $folder = $driveService->files->create($folderMetadata, [
-                'fields' => 'id, name, webViewLink'
-            ]);
-
-            $folderId = $folder->getId();
-            $uploadResults[] = [
-                'name' => $folder->getName(),
-                'type' => 'folder',
-                'status' => 'success',
-                'link' => $folder->getWebViewLink()
-            ];
-
-            sendProgress(20, 'Folder created successfully', $_POST['folder_name']);
-
-            // 2. Upload files to the folder
-            foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
-                $fileName = $_FILES['files']['name'][$key];
-                $filesProcessed++;
-                $fileSize = $_FILES['files']['size'][$key];
-                $maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
+            try {
+                $fileMetadata = new Google\Service\Drive\DriveFile([
+                    'name' => $_FILES['files']['name'][$key],
+                    'parents' => [$folderId]
+                ]);
+                
+                $content = file_get_contents($tmpName);
+                
+                $uploadedFile = $driveService->files->create($fileMetadata, [
+                    'data' => $content,
+                    'mimeType' => $_FILES['files']['type'][$key],
+                    'uploadType' => 'multipart',
+                    'fields' => 'id, name, webViewLink'
+                ]);
+                
+                $uploadResults[] = [
+                    'name' => $uploadedFile->getName(),
+                    'type' => 'file',
+                    'status' => 'success',
+                    'link' => $uploadedFile->getWebViewLink()
+                ];
+            } catch (Exception $e) {
+                $uploadResults[] = [
+                    'name' => $_FILES['files']['name'][$key],
+                    'type' => 'file',
+                    'status' => 'error',
+                    'message' => $e->getMessage()
+                ];
+            }
+        }
+        
+    } catch (Exception $e) {
+        die("Error creating folder: " . $e->getMessage());
+    }
+    
+    // Display results page
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Upload Results - Drive Upload</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --primary-color: #1a237e;
+                --primary-light: #534bae;
+                --primary-dark: #000051;
+                --secondary-color: #1976d2;
+                --text-light: #f5f5f5;
+                --text-muted: #b0bec5;
+                --background-dark: #0a192f;
+                --card-bg: #16213e;
+                --border-color: #2a3a5e;
+                --success-color: #4caf50;
+                --error-color: #f44336;
+            }
             
-                if ($fileSize > $maxSize) {
-                    $uploadResults[] = [
-                        'name' => $fileName,
-                        'type' => 'file',
-                        'status' => 'error',
-                        'message' => 'File exceeds 1536MB limit'
-                    ];
-                    continue; // Skip this file
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            
+            body {
+                font-family: 'Roboto', sans-serif;
+                background-color: var(--background-dark);
+                color: var(--text-light);
+                line-height: 1.6;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 2rem;
+            }
+            
+            header {
+                background-color: var(--primary-color);
+                padding: 1.5rem 2rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                margin-bottom: 2rem;
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+                font-weight: 500;
+                color: white;
+                text-decoration: none;
+            }
+            
+            .card {
+                background-color: var(--card-bg);
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            h1, h2, h3 {
+                color: var(--text-light);
+                margin-bottom: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                font-weight: 500;
+                border-bottom: 2px solid var(--secondary-color);
+                padding-bottom: 0.5rem;
+                display: inline-block;
+            }
+            
+            .result-item {
+                padding: 1.25rem;
+                border-radius: 6px;
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-left: 4px solid transparent;
+            }
+            
+            .result-item.success {
+                border-left-color: var(--success-color);
+            }
+            
+            .result-item.error {
+                border-left-color: var(--error-color);
+            }
+            
+            .result-icon {
+                font-size: 1.5rem;
+                margin-right: 1rem;
+            }
+            
+            .success .result-icon {
+                color: var(--success-color);
+            }
+            
+            .error .result-icon {
+                color: var(--error-color);
+            }
+            
+            .result-content {
+                flex-grow: 1;
+            }
+            
+            .result-name {
+                font-weight: 500;
+                margin-bottom: 0.25rem;
+            }
+            
+            .result-type {
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-bottom: 0.25rem;
+            }
+            
+            .result-status {
+                font-size: 0.9rem;
+            }
+            
+            .success .result-status {
+                color: var(--success-color);
+            }
+            
+            .error .result-status {
+                color: var(--error-color);
+            }
+            
+            .result-link {
+                display: inline-block;
+                margin-top: 0.5rem;
+                color: var(--secondary-color);
+                text-decoration: none;
+                transition: color 0.3s;
+            }
+            
+            .result-link:hover {
+                text-decoration: underline;
+            }
+            
+            .back-link {
+                display: inline-block;
+                margin-top: 1.5rem;
+                color: var(--secondary-color);
+                text-decoration: none;
+                font-weight: 500;
+                transition: color 0.3s;
+            }
+            
+            .back-link:hover {
+                text-decoration: underline;
+            }
+            
+            .summary {
+                margin-bottom: 2rem;
+                padding: 1rem;
+                background-color: rgba(0, 0, 0, 0.2);
+                border-radius: 6px;
+                text-align: center;
+            }
+            
+            .summary-success {
+                color: var(--success-color);
+                font-weight: 500;
+            }
+            
+            .summary-error {
+                color: var(--error-color);
+                font-weight: 500;
+            }
+            
+            @media (max-width: 768px) {
+                .container {
+                    padding: 1rem;
                 }
-                $progress = 20 + (($filesProcessed / $totalFiles) * 70);
-                sendProgress($progress, 'Uploading file...', $fileName);
-
-                if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
-                    $uploadResults[] = [
-                        'name' => $fileName,
-                        'type' => 'file',
-                        'status' => 'error',
-                        'message' => 'Upload failed with error code ' . $_FILES['files']['error'][$key]
-                    ];
-                    continue;
+                
+                header {
+                    padding: 1rem;
                 }
-
-                try {
-                    $fileMetadata = new Google\Service\Drive\DriveFile([
-                        'name' => $fileName,
-                        'parents' => [$folderId]
-                    ]);
-
-                    $content = file_get_contents($tmpName);
-
-                    $uploadedFile = $driveService->files->create($fileMetadata, [
-                        'data' => $content,
-                        'mimeType' => $_FILES['files']['type'][$key],
-                        'uploadType' => 'multipart',
-                        'fields' => 'id, name, webViewLink'
-                    ]);
-
-                    $uploadResults[] = [
-                        'name' => $uploadedFile->getName(),
-                        'type' => 'file',
-                        'status' => 'success',
-                        'link' => $uploadedFile->getWebViewLink()
-                    ];
-
-                    sendProgress($progress, 'File uploaded successfully', $fileName);
-                } catch (Exception $e) {
-                    $uploadResults[] = [
-                        'name' => $fileName,
-                        'type' => 'file',
-                        'status' => 'error',
-                        'message' => $e->getMessage()
-                    ];
-                    sendProgress($progress, 'Error uploading file: ' . $e->getMessage(), $fileName);
+                
+                .card {
+                    padding: 1.5rem;
                 }
             }
-
-            sendProgress(100, 'Upload complete!', '');
-            
-            // Store results in session for the results page
-            session_start();
-            $_SESSION['upload_results'] = $uploadResults;
-            session_write_close();
-            
-        } catch (Exception $e) {
-            sendProgress(0, 'Upload failed: ' . $e->getMessage(), '');
-            error_log("Upload error: " . $e->getMessage());
-        }
-    });
-    
-    exit();
+        </style>
+    </head>
+    <body>
+        <header>
+            <a href="https://dorykeepswimming.online/" class="logo">ATMS Drive Uploader</a>
+        </header>
+        
+        <div class="container">
+            <div class="card">
+                <h1>Upload Results</h1>
+                
+                <?php
+                // Calculate success/error counts
+                $successCount = 0;
+                $errorCount = 0;
+                
+                foreach ($uploadResults as $result) {
+                    if ($result['status'] === 'success') {
+                        $successCount++;
+                    } else {
+                        $errorCount++;
+                    }
+                }
+                ?>
+                
+                <div class="summary">
+                    <p>Upload completed with 
+                        <span class="summary-success"><?php echo $successCount; ?> successful</span> and 
+                        <span class="summary-error"><?php echo $errorCount; ?> failed</span> items.
+                    </p>
+                </div>
+                
+                <?php foreach ($uploadResults as $result): ?>
+                    <div class="result-item <?php echo $result['status']; ?>">
+                        <div class="result-icon">
+                            <?php echo $result['status'] === 'success' ? '✓' : '✗'; ?>
+                        </div>
+                        <div class="result-content">
+                            <div class="result-name"><?php echo htmlspecialchars($result['name']); ?></div>
+                            <div class="result-type"><?php echo $result['type']; ?></div>
+                            <div class="result-status">
+                                <?php if ($result['status'] === 'success'): ?>
+                                    Uploaded successfully
+                                <?php else: ?>
+                                    Error: <?php echo htmlspecialchars($result['message']); ?>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($result['status'] === 'success'): ?>
+                                <a href="<?php echo htmlspecialchars($result['link']); ?>" class="result-link" target="_blank">View in Drive</a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                
+                <a href="https://dorykeepswimming.online/" class="back-link">← Upload more files</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
 } else {
-    header('Location: https://dorykeepswimming.online/');
+    header('Location:https://dorykeepswimming.online/');
 }
 ?>

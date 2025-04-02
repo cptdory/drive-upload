@@ -3,12 +3,6 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 session_start();
 
-// Set upload size limits
-ini_set('upload_max_filesize', '1536M');
-ini_set('post_max_size', '1536M');
-ini_set('max_execution_time', 300); // 5 minutes
-ini_set('max_input_time', 300); // 5 minutes
-
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['access_token']);
@@ -37,27 +31,272 @@ if (isset($_SESSION['access_token'])) {
     }
 
     $driveService = new Google\Service\Drive($client);
-?>
+    ?>
     <!DOCTYPE html>
     <html>
     <head>
         <title>Upload to Google Drive</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-        <link href="styles.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <style>
+            :root {
+                --primary-color: #1a237e;
+                --primary-light: #534bae;
+                --primary-dark: #000051;
+                --secondary-color: #1976d2;
+                --text-light: #f5f5f5;
+                --text-muted: #b0bec5;
+                --background-dark: #0a192f;
+                --card-bg: #16213e;
+                --border-color: #2a3a5e;
+                --success-color: #4caf50;
+                --error-color: #f44336;
+            }
+            
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            
+            body {
+                font-family: 'Roboto', sans-serif;
+                background-color: var(--background-dark);
+                color: var(--text-light);
+                line-height: 1.6;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 2rem;
+            }
+            
+            header {
+                background-color: var(--primary-color);
+                padding: 1.5rem 2rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+                font-weight: 500;
+                color: white;
+                text-decoration: none;
+            }
+            
+            .logout-btn {
+                color: var(--text-light);
+                text-decoration: none;
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                transition: background-color 0.3s;
+            }
+            
+            .logout-btn:hover {
+                background-color: var(--primary-dark);
+            }
+            
+            .card {
+                background-color: var(--card-bg);
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                padding: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            h1, h2, h3 {
+                color: var(--text-light);
+                margin-bottom: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+                font-weight: 500;
+                border-bottom: 2px solid var(--secondary-color);
+                padding-bottom: 0.5rem;
+                display: inline-block;
+            }
+            
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+            
+            label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                color: var(--text-light);
+            }
+            
+            input[type="text"],
+            input[type="file"] {
+                width: 100%;
+                padding: 0.75rem;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                background-color: rgba(255, 255, 255, 0.05);
+                color: var(--text-light);
+                font-size: 1rem;
+                transition: border-color 0.3s;
+            }
+            
+            input[type="text"]:focus,
+            input[type="file"]:focus {
+                outline: none;
+                border-color: var(--secondary-color);
+            }
+            
+            .btn {
+                background-color: var(--secondary-color);
+                color: white;
+                border: none;
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.3s, transform 0.2s;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .btn:hover {
+                background-color: #1565c0;
+                transform: translateY(-2px);
+            }
+            
+            .btn:active {
+                transform: translateY(0);
+            }
+            
+            .file-list {
+                margin-top: 1rem;
+                background-color: rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+                padding: 1rem;
+                border: 1px dashed var(--border-color);
+            }
+            
+            .file-item {
+                padding: 0.5rem;
+                background-color: rgba(255, 255, 255, 0.05);
+                border-radius: 4px;
+                margin-bottom: 0.5rem;
+                display: flex;
+                align-items: center;
+            }
+            
+            .file-item:before {
+                content: "📄";
+                margin-right: 0.5rem;
+            }
+            
+            .drive-files {
+                list-style: none;
+            }
+            
+            .drive-files li {
+                padding: 0.75rem;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                align-items: center;
+            }
+            
+            .drive-files li:before {
+                content: "📁";
+                margin-right: 0.75rem;
+            }
+            
+            .drive-files li a {
+                color: var(--text-light);
+                text-decoration: none;
+                transition: color 0.3s;
+                flex-grow: 1;
+            }
+            
+            .drive-files li a:hover {
+                color: var(--secondary-color);
+            }
+            
+            .file-type {
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                margin-left: 1rem;
+            }
+            
+            .empty-state {
+                color: var(--text-muted);
+                text-align: center;
+                padding: 2rem;
+                font-style: italic;
+            }
+            
+            .error-message {
+                color: var(--error-color);
+                background-color: rgba(244, 67, 54, 0.1);
+                padding: 1rem;
+                border-radius: 4px;
+                margin-bottom: 1rem;
+            }
+            
+            @media (max-width: 768px) {
+                .container {
+                    padding: 1rem;
+                }
+                
+                header {
+                    padding: 1rem;
+                }
+                
+                .card {
+                    padding: 1.5rem;
+                }
+            }
+            .progress-container {
+        margin-top: 1.5rem;
+        display: none;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 10px;
+        background-color: var(--border-color);
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+    
+    .progress {
+        height: 100%;
+        background-color: var(--secondary-color);
+        width: 0%;
+        transition: width 0.3s;
+    }
+    
+    .progress-text {
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+        </style>
     </head>
     <body>
         <header>
             <a href="/drive-upload/" class="logo">ATMS Drive Uploader</a>
             <a href="?logout" class="logout-btn">Logout</a>
         </header>
-
+        
         <div class="container">
             <div class="card">
                 <h1>Upload Files to Google Drive</h1>
-
-                <form id="uploadForm" method="post" enctype="multipart/form-data" action="upload.php">
+                
+                <form action="upload.php" method="post" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="folder_name">Folder Name</label>
                         <input type="text" name="folder_name" id="folder_name" required placeholder="Enter a name for your folder">
@@ -67,20 +306,15 @@ if (isset($_SESSION['access_token'])) {
                         <input type="file" name="files[]" id="files" multiple required>
                         <div class="file-list" id="fileList"></div>
                     </div>
-
-                    <div class="progress-container" id="progressContainer">
-                        <div class="overall-progress">
-                            <div class="progress-bar">
-                                <div class="progress" id="overallProgress"></div>
-                            </div>
-                            <div class="progress-text" id="overallText">Preparing upload...</div>
-                        </div>
-                        <div id="fileProgressContainer"></div>
-                    </div>
-
                     <div class="form-group">
-                        <button type="submit" class="btn" id="uploadBtn">Upload to Drive</button>
+                        <button type="submit" class="btn">Upload to Drive</button>
                     </div>
+                    <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">Uploading: 0%</div>
+    </div>
                 </form>
             </div>
 
@@ -115,189 +349,50 @@ if (isset($_SESSION['access_token'])) {
         </div>
 
         <script>
-// Display selected file names with size validation
-document.getElementById('files').addEventListener('change', function() {
-    const fileList = document.getElementById('fileList');
-    fileList.innerHTML = '';
-    const maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
-    let hasInvalidFiles = false;
+            // Display selected file names
+            document.getElementById('files').addEventListener('change', function() {
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML = '';
 
-    if (this.files.length === 0) {
-        fileList.innerHTML = '<div class="empty-state">No files selected</div>';
-        return;
-    }
+                if (this.files.length === 0) {
+                    fileList.innerHTML = '<div class="empty-state">No files selected</div>';
+                    return;
+                }
 
-    for (let i = 0; i < this.files.length; i++) {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        
-        // Add warning icon for oversized files
-        if (this.files[i].size > maxSize) {
-            fileItem.innerHTML = `⚠️ ${this.files[i].name} <span class="file-size-error">(File too large - ${formatFileSize(this.files[i].size)})</span>`;
-            fileItem.style.color = 'var(--error-color)';
-            hasInvalidFiles = true;
-        } else {
-            fileItem.innerHTML = `${this.files[i].name} <span class="file-size">${formatFileSize(this.files[i].size)}</span>`;
-        }
-        fileList.appendChild(fileItem);
-    }
-
-    // Disable upload button if any files are too large
-    document.getElementById('uploadBtn').disabled = hasInvalidFiles;
-    if (hasInvalidFiles) {
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'error-message';
-        errorMsg.textContent = 'Some files exceed the 1536MB limit. Please remove them.';
-        fileList.appendChild(errorMsg);
-    }
-});
-
-// Handle form submission with enhanced validation
+                for (let i = 0; i < this.files.length; i++) {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.textContent = this.files[i].name;
+                    fileList.appendChild(fileItem);
+                }
+            });
+            // Add progress tracking
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const files = document.getElementById('files').files;
-    const maxSize = 1536 * 1024 * 1024; // 1536MB in bytes
-    
-    // Final client-side validation
-    for (let file of files) {
-        if (file.size > maxSize) {
-            alert(`Cannot upload: "${file.name}" (${formatFileSize(file.size)}) exceeds 1536MB limit.`);
-            return;
-        }
-    }
-    
-    const formData = new FormData(form);
     const progressContainer = document.getElementById('progressContainer');
-    const overallProgress = document.getElementById('overallProgress');
-    const overallText = document.getElementById('overallText');
-    const fileProgressContainer = document.getElementById('fileProgressContainer');
-    const uploadBtn = document.getElementById('uploadBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
     
-    // Show progress container
     progressContainer.style.display = 'block';
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Uploading...';
     
-    // Clear previous file progress indicators
-    fileProgressContainer.innerHTML = '';
-    
-    // Create detailed progress elements for each file
-    for (let i = 0; i < files.length; i++) {
-        const fileProgress = document.createElement('div');
-        fileProgress.className = 'file-progress';
-        
-        const fileInfo = document.createElement('div');
-        fileInfo.className = 'file-progress-info';
-        fileInfo.innerHTML = `
-            <span class="file-progress-name">${files[i].name}</span>
-            <span class="file-progress-size">${formatFileSize(files[i].size)}</span>
-        `;
-        
-        const progressBar = document.createElement('div');
-        progressBar.className = 'progress-bar';
-        
-        const progress = document.createElement('div');
-        progress.className = 'progress';
-        progress.id = `fileProgress${i}`;
-        
-        progressBar.appendChild(progress);
-        fileProgress.appendChild(fileInfo);
-        fileProgress.appendChild(progressBar);
-        fileProgressContainer.appendChild(fileProgress);
-    }
-    
-    // Submit form via AJAX with progress tracking
     const xhr = new XMLHttpRequest();
-    
-    // Client-side upload progress (for the POST request)
     xhr.upload.addEventListener('progress', function(e) {
         if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            overallProgress.style.width = percent + '%';
-            overallText.textContent = `Uploading data... ${percent}%`;
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            progressText.textContent = 'Uploading: ' + percentComplete + '%';
         }
     });
     
-    xhr.addEventListener('load', function() {
-        if (xhr.status === 200) {
-            overallText.textContent = 'Processing complete!';
-            window.location.href = 'upload_results.php';
-        } else {
-            showUploadError('Upload failed: Server error');
-        }
-    });
+    xhr.open('POST', 'upload.php', true);
+    xhr.send(new FormData(this));
     
-    xhr.addEventListener('error', function() {
-        showUploadError('Network error during upload');
-    });
-    
-    xhr.addEventListener('abort', function() {
-        showUploadError('Upload cancelled');
-    });
-    
-    xhr.open('POST', form.action, true);
-    xhr.send(formData);
-    
-    // Check server-side processing progress
-    const checkProgress = setInterval(function() {
-        fetch('check_progress.php')
-            .then(response => {
-                if (!response.ok) throw new Error('Network error');
-                return response.json();
-            })
-            .then(data => {
-                if (data.progress) {
-                    // Update overall progress
-                    overallProgress.style.width = data.progress + '%';
-                    
-                    // Update status message
-                    let statusMessage = `Processing... ${data.progress}%`;
-                    if (data.current_file) {
-                        statusMessage = `Uploading ${data.current_file} (${data.progress}%)`;
-                        
-                        // Update individual file progress if available
-                        if (data.file_index !== undefined) {
-                            const fileProgress = document.getElementById(`fileProgress${data.file_index}`);
-                            if (fileProgress) {
-                                fileProgress.style.width = data.file_progress + '%';
-                            }
-                        }
-                    }
-                    overallText.textContent = statusMessage;
-                    
-                    if (data.progress === 100) {
-                        clearInterval(checkProgress);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Progress check error:', error);
-            });
-    }, 1000);
-    
-    function showUploadError(message) {
-        overallText.textContent = message;
-        overallProgress.style.backgroundColor = 'var(--error-color)';
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Try Again';
-        clearInterval(checkProgress);
-    }
+    // Prevent default form submission
+    e.preventDefault();
 });
-
-// Helper function to format file sizes
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-</script>
+        </script>
     </body>
     </html>
-<?php
+    <?php
 } else {
     $authUrl = $client->createAuthUrl();
     header('Location: ' . filter_var($authUrl, FILTER_SANITIZE_URL));
