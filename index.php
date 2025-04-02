@@ -112,86 +112,104 @@ if (isset($_SESSION['access_token'])) {
         </div>
 
         <script>
-            // Display selected file names
-            document.getElementById('files').addEventListener('change', function() {
-                const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
+    // Display selected file names
+    document.getElementById('files').addEventListener('change', function() {
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
 
-                if (this.files.length === 0) {
-                    fileList.innerHTML = '<div class="empty-state">No files selected</div>';
-                    return;
-                }
+        if (this.files.length === 0) {
+            fileList.innerHTML = '<div class="empty-state">No files selected</div>';
+            return;
+        }
 
-                for (let i = 0; i < this.files.length; i++) {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.textContent = this.files[i].name;
-                    fileList.appendChild(fileItem);
-                }
-            });
+        for (let i = 0; i < this.files.length; i++) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.textContent = this.files[i].name;
+            fileList.appendChild(fileItem);
+        }
+    });
 
-            // Handle form submission with progress tracking
-            document.getElementById('uploadForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const form = this;
-                const progressContainer = document.getElementById('progressContainer');
-                const overallProgress = document.getElementById('overallProgress');
-                const overallText = document.getElementById('overallText');
-                const currentFile = document.getElementById('currentFile');
-                const progressPercentage = document.getElementById('progressPercentage');
-                const uploadBtn = document.getElementById('uploadBtn');
-                
-                // Show progress container
-                progressContainer.style.display = 'block';
-                uploadBtn.disabled = true;
-                uploadBtn.textContent = 'Uploading...';
-                
-                // Create FormData object
-                const formData = new FormData(form);
-                
-                // Start checking progress
-                const progressInterval = setInterval(checkProgress, 500);
-                
-                // Function to check upload progress
-                function checkProgress() {
-                    fetch('get_progress.php')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.progress) {
-                                // Update progress bar
-                                const progress = Math.round(data.progress);
-                                overallProgress.style.width = progress + '%';
-                                progressPercentage.textContent = progress + '%';
-                                overallText.textContent = data.message || 'Uploading...';
-                                
-                                // Update current file
-                                if (data.current_file) {
-                                    currentFile.textContent = 'Current file: ' + data.current_file;
-                                }
-                                
-                                // If upload is complete
-                                if (data.progress >= 100) {
-                                    clearInterval(progressInterval);
-                                    // Submit the form normally to complete the upload
-                                    form.submit();
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error checking progress:', error);
-                        });
-                }
-                
-                // Submit the form via AJAX to start the upload process
-                fetch('upload.php', {
-                    method: 'POST',
-                    body: formData
-                }).catch(error => {
-                    console.error('Upload error:', error);
+    // Handle form submission with progress tracking
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const progressContainer = document.getElementById('progressContainer');
+        const overallProgress = document.getElementById('overallProgress');
+        const overallText = document.getElementById('overallText');
+        const currentFile = document.getElementById('currentFile');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const uploadBtn = document.getElementById('uploadBtn');
+        
+        // Reset progress display
+        overallProgress.style.width = '0%';
+        progressPercentage.textContent = '0%';
+        overallText.textContent = 'Starting upload...';
+        currentFile.textContent = '';
+        
+        // Show progress container
+        progressContainer.style.display = 'block';
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+        
+        // Create FormData object
+        const formData = new FormData(form);
+        
+        // Start checking progress
+        let progressInterval;
+        let uploadCompleted = false;
+        
+        function checkProgress() {
+            fetch('get_progress.php?t=' + Date.now()) // Add timestamp to prevent caching
+                .then(response => response.json())
+                .then(data => {
+                    if (data.progress) {
+                        // Update progress bar
+                        const progress = Math.round(data.progress);
+                        overallProgress.style.width = progress + '%';
+                        progressPercentage.textContent = progress + '%';
+                        overallText.textContent = data.message || 'Uploading...';
+                        
+                        // Update current file
+                        if (data.current_file) {
+                            currentFile.textContent = 'Current file: ' + data.current_file;
+                        }
+                        
+                        // If upload is complete
+                        if (data.progress >= 100 && !uploadCompleted) {
+                            uploadCompleted = true;
+                            clearInterval(progressInterval);
+                            overallText.textContent = 'Upload complete!';
+                            uploadBtn.textContent = 'Upload Complete';
+                            
+                            // Redirect to results page after a short delay
+                            setTimeout(() => {
+                                window.location.href = 'upload_results.php';
+                            }, 1000);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking progress:', error);
                 });
-            });
-        </script>
+        }
+        
+        progressInterval = setInterval(checkProgress, 500);
+        
+        // Submit the form via AJAX to start the upload process
+        fetch('upload.php', {
+            method: 'POST',
+            body: formData
+        }).catch(error => {
+            console.error('Upload error:', error);
+            overallText.textContent = 'Upload failed!';
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Try Again';
+            clearInterval(progressInterval);
+        });
+    });
+</script>
     </body>
 
     </html>
