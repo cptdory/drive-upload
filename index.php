@@ -6,7 +6,7 @@ session_start();
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['access_token']);
-    header('Location:https://dorykeepswimming.online//');
+    header('Location: https://dorykeepswimming.online/');
     exit();
 }
 
@@ -25,7 +25,7 @@ if (isset($_SESSION['access_token'])) {
             $_SESSION['access_token'] = $client->getAccessToken();
         } else {
             unset($_SESSION['access_token']);
-            header('Location:https://dorykeepswimming.online/');
+            header('Location: https://dorykeepswimming.online/');
             exit();
         }
     }
@@ -39,264 +39,8 @@ if (isset($_SESSION['access_token'])) {
         <title>Upload to Google Drive</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+        <link href="styles.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-        <style>
-            :root {
-                --primary-color: #1a237e;
-                --primary-light: #534bae;
-                --primary-dark: #000051;
-                --secondary-color: #1976d2;
-                --text-light: #f5f5f5;
-                --text-muted: #b0bec5;
-                --background-dark: #0a192f;
-                --card-bg: #16213e;
-                --border-color: #2a3a5e;
-                --success-color: #4caf50;
-                --error-color: #f44336;
-            }
-
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
-
-            body {
-                font-family: 'Roboto', sans-serif;
-                background-color: var(--background-dark);
-                color: var(--text-light);
-                line-height: 1.6;
-                padding: 0;
-                margin: 0;
-            }
-
-            .container {
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 2rem;
-            }
-
-            header {
-                background-color: var(--primary-color);
-                padding: 1.5rem 2rem;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .logo {
-                font-size: 1.5rem;
-                font-weight: 500;
-                color: white;
-                text-decoration: none;
-            }
-
-            .logout-btn {
-                color: var(--text-light);
-                text-decoration: none;
-                padding: 0.5rem 1rem;
-                border-radius: 4px;
-                transition: background-color 0.3s;
-            }
-
-            .logout-btn:hover {
-                background-color: var(--primary-dark);
-            }
-
-            .card {
-                background-color: var(--card-bg);
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                padding: 2rem;
-                margin-bottom: 2rem;
-            }
-
-            h1,
-            h2,
-            h3 {
-                color: var(--text-light);
-                margin-bottom: 1.5rem;
-            }
-
-            h1 {
-                font-size: 2rem;
-                font-weight: 500;
-                border-bottom: 2px solid var(--secondary-color);
-                padding-bottom: 0.5rem;
-                display: inline-block;
-            }
-
-            .form-group {
-                margin-bottom: 1.5rem;
-            }
-
-            label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 500;
-                color: var(--text-light);
-            }
-
-            input[type="text"],
-            input[type="file"] {
-                width: 100%;
-                padding: 0.75rem;
-                border: 1px solid var(--border-color);
-                border-radius: 4px;
-                background-color: rgba(255, 255, 255, 0.05);
-                color: var(--text-light);
-                font-size: 1rem;
-                transition: border-color 0.3s;
-            }
-
-            input[type="text"]:focus,
-            input[type="file"]:focus {
-                outline: none;
-                border-color: var(--secondary-color);
-            }
-
-            .btn {
-                background-color: var(--secondary-color);
-                color: white;
-                border: none;
-                padding: 0.75rem 1.5rem;
-                font-size: 1rem;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.3s, transform 0.2s;
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-
-            .btn:hover {
-                background-color: #1565c0;
-                transform: translateY(-2px);
-            }
-
-            .btn:active {
-                transform: translateY(0);
-            }
-
-            .file-list {
-                margin-top: 1rem;
-                background-color: rgba(0, 0, 0, 0.1);
-                border-radius: 4px;
-                padding: 1rem;
-                border: 1px dashed var(--border-color);
-            }
-
-            .file-item {
-                padding: 0.5rem;
-                background-color: rgba(255, 255, 255, 0.05);
-                border-radius: 4px;
-                margin-bottom: 0.5rem;
-                display: flex;
-                align-items: center;
-            }
-
-            .file-item:before {
-                content: "📄";
-                margin-right: 0.5rem;
-            }
-
-            .drive-files {
-                list-style: none;
-            }
-
-            .drive-files li {
-                padding: 0.75rem;
-                border-bottom: 1px solid var(--border-color);
-                display: flex;
-                align-items: center;
-            }
-
-            .drive-files li:before {
-                content: "📁";
-                margin-right: 0.75rem;
-            }
-
-            .drive-files li a {
-                color: var(--text-light);
-                text-decoration: none;
-                transition: color 0.3s;
-                flex-grow: 1;
-            }
-
-            .drive-files li a:hover {
-                color: var(--secondary-color);
-            }
-
-            .file-type {
-                color: var(--text-muted);
-                font-size: 0.85rem;
-                margin-left: 1rem;
-            }
-
-            .empty-state {
-                color: var(--text-muted);
-                text-align: center;
-                padding: 2rem;
-                font-style: italic;
-            }
-
-            .error-message {
-                color: var(--error-color);
-                background-color: rgba(244, 67, 54, 0.1);
-                padding: 1rem;
-                border-radius: 4px;
-                margin-bottom: 1rem;
-            }
-
-            @media (max-width: 768px) {
-                .container {
-                    padding: 1rem;
-                }
-
-                header {
-                    padding: 1rem;
-                }
-
-                .card {
-                    padding: 1.5rem;
-                }
-            }
-
-            .progress-container {
-                margin: 20px 0;
-                display: none;
-            }
-
-            .progress-bar {
-                height: 20px;
-                background-color: #f0f0f0;
-                border-radius: 10px;
-                overflow: hidden;
-            }
-
-            .progress {
-                height: 100%;
-                background-color: #4285F4;
-                width: 0%;
-                transition: width 0.3s ease;
-            }
-
-            .progress-text {
-                margin-top: 5px;
-                text-align: center;
-                font-size: 14px;
-            }
-
-            .file-progress {
-                margin-bottom: 10px;
-            }
-
-            .file-progress-name {
-                font-size: 14px;
-                margin-bottom: 5px;
-            }
-        </style>
     </head>
 
     <body>
@@ -324,10 +68,11 @@ if (isset($_SESSION['access_token'])) {
                         <div class="overall-progress">
                             <div class="progress-bar">
                                 <div class="progress" id="overallProgress"></div>
+                                <div class="progress-percentage" id="progressPercentage">0%</div>
                             </div>
                             <div class="progress-text" id="overallText">Preparing upload...</div>
                         </div>
-                        <div id="fileProgressContainer"></div>
+                        <div class="current-file" id="currentFile"></div>
                     </div>
 
                     <div class="form-group">
@@ -383,6 +128,68 @@ if (isset($_SESSION['access_token'])) {
                     fileItem.textContent = this.files[i].name;
                     fileList.appendChild(fileItem);
                 }
+            });
+
+            // Handle form submission with progress tracking
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const form = this;
+                const progressContainer = document.getElementById('progressContainer');
+                const overallProgress = document.getElementById('overallProgress');
+                const overallText = document.getElementById('overallText');
+                const currentFile = document.getElementById('currentFile');
+                const progressPercentage = document.getElementById('progressPercentage');
+                const uploadBtn = document.getElementById('uploadBtn');
+                
+                // Show progress container
+                progressContainer.style.display = 'block';
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+                
+                // Create FormData object
+                const formData = new FormData(form);
+                
+                // Start checking progress
+                const progressInterval = setInterval(checkProgress, 500);
+                
+                // Function to check upload progress
+                function checkProgress() {
+                    fetch('get_progress.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.progress) {
+                                // Update progress bar
+                                const progress = Math.round(data.progress);
+                                overallProgress.style.width = progress + '%';
+                                progressPercentage.textContent = progress + '%';
+                                overallText.textContent = data.message || 'Uploading...';
+                                
+                                // Update current file
+                                if (data.current_file) {
+                                    currentFile.textContent = 'Current file: ' + data.current_file;
+                                }
+                                
+                                // If upload is complete
+                                if (data.progress >= 100) {
+                                    clearInterval(progressInterval);
+                                    // Submit the form normally to complete the upload
+                                    form.submit();
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking progress:', error);
+                        });
+                }
+                
+                // Submit the form via AJAX to start the upload process
+                fetch('upload.php', {
+                    method: 'POST',
+                    body: formData
+                }).catch(error => {
+                    console.error('Upload error:', error);
+                });
             });
         </script>
     </body>
